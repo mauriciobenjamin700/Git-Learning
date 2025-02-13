@@ -210,6 +210,7 @@ Branches são como linhas de desenvolvimento paralelas, permitindo que você tra
 - **Parâmetros:**
   - `<nome_da_branch>`: Cria uma nova branch.
   - `-d <nome_da_branch>`: Exclui uma branch.
+  - `git fetch --prune` :Exclui do history branch removidas
 
 - **Exemplos:**
 
