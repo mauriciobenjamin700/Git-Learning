@@ -344,6 +344,11 @@ O `git revert` cria um novo commit que reverte as alterações introduzidas por 
 ```bash
 git revert 1a2b3c4d
 ```
+Logo em seguida, use este comando para descartas as mudanças feitas
+
+```bash
+git push --force
+```
 
 ### 3. Redefinindo o Histórico: Git Reset
 
