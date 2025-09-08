@@ -419,6 +419,221 @@ O `git submodule` permite incluir outros repositórios Git como subdiretórios d
 git submodule add https://github.com/usuario/submodulo.git lib/submodulo
 git submodule update
 ```
+## Visão geral do GitFlow (o mapa mental)
+
+* **main**: estado em produção. Cada commit em `main` deveria corresponder a uma versão lançada (tag).
+* **develop**: integração do “próximo release”. É onde as features se juntam.
+* **Branches de apoio**:
+
+  * **feature/**\*: desenvolvimentos isolados que partem de `develop` e voltam para `develop`.
+  * **release/**\*: estabilização do próximo release (freeze). Parte de `develop`, volta para `main` (com tag) e para `develop`.
+  * **hotfix/**\*: correção crítica em produção. Parte de `main`, volta para `main` (com tag) e para `develop`.
+  * (Opcional) **support/**\* ou **maintenance/**\*: manter versões antigas em paralelo.
+
+Diagrama (simplificado):
+
+```
+main     ──●───────M─────────●─────────M───>
+             \               /           \
+develop  ──●──●──M──●──●───M───────────────M─>
+            \     \          \
+feature/x    ●──●──M          \
+feature/y       ●──●──M        \
+release/1.4                ●───M───(tag v1.4.0)
+hotfix/1.4.1                          ●─M─(tag v1.4.1)
+```
+
+* `M` = merge.
+* Tags (ex.: `v1.4.0`) marcam versões produzidas.
+
+---
+
+## Fluxos passo a passo
+
+### 1) Preparação do repositório
+
+```bash
+git init
+git checkout -b main
+git commit --allow-empty -m "chore: initial commit"
+git checkout -b develop   # develop nasce a partir de main
+git push -u origin main
+git push -u origin develop
+```
+
+### 2) Nova feature
+
+* Origem: `develop` → **feature/**.
+* Retorno: **merge para `develop`** via PR.
+
+```bash
+git checkout develop
+git pull
+git checkout -b feature/login
+# ... commits ...
+git push -u origin feature/login
+# Abra PR: feature/login -> develop (CI, code review)
+# Merge aprovado e delete a branch
+```
+
+### 3) Preparar um release
+
+* Origem: `develop` → **release/**.
+* Objetivo: congelar features, só pequenos ajustes/bugs e *version bump*.
+* Retorno: merge para `main` **com tag** + merge de volta em `develop`.
+
+```bash
+git checkout develop
+git pull
+git checkout -b release/1.4.0
+# bump de versão, changelog, últimos fixes
+git push -u origin release/1.4.0
+# PR: release/1.4.0 -> main (deploy/release)
+# Depois marque a tag:
+git checkout main
+git merge --no-ff release/1.4.0 -m "release: 1.4.0"
+git tag -a v1.4.0 -m "Release 1.4.0"
+git push origin main --tags
+# Traga de volta para develop:
+git checkout develop
+git merge --no-ff release/1.4.0 -m "chore: merge back release 1.4.0"
+git push
+```
+
+### 4) Hotfix em produção
+
+* Origem: `main` → **hotfix/**.
+* Retorno: merge para `main` **com tag** + merge de volta em `develop`.
+
+```bash
+git checkout main
+git pull
+git checkout -b hotfix/1.4.1
+# corrigir bug crítico
+git push -u origin hotfix/1.4.1
+# PR: hotfix/1.4.1 -> main
+git checkout main
+git merge --no-ff hotfix/1.4.1 -m "hotfix: 1.4.1"
+git tag -a v1.4.1 -m "Hotfix 1.4.1"
+git push origin main --tags
+# merge back
+git checkout develop
+git merge --no-ff hotfix/1.4.1 -m "chore: merge back hotfix 1.4.1"
+git push
+```
+
+---
+
+## Convenções úteis
+
+**Nomes de branches**
+
+* `feature/<escopo>-<assunto>` → `feature/auth-login`, `feature/catalogo-filtro`
+* `release/<MAJOR.MINOR.PATCH>` → `release/2.3.0`
+* `hotfix/<MAJOR.MINOR.PATCH>` → `hotfix/2.3.1`
+
+**Versionamento**
+
+* Use **SemVer**: `MAJOR.MINOR.PATCH`
+
+  * `MAJOR`: mudanças incompatíveis.
+  * `MINOR`: novas funcionalidades compatíveis.
+  * `PATCH`: correções.
+
+**Merges**
+
+* Gitflow clássico usa `--no-ff` para preservar a história de branches.
+* Em PRs, muitas equipes preferem **squash** para histórico mais limpo (decida e padronize).
+
+**Commits**
+
+* Mensagens claras; muitas equipes usam **Conventional Commits** (`feat:`, `fix:`, `chore:`…).
+* Evite rebase em branches já publicados, a não ser que toda a equipe concorde (risco de reescrever histórico).
+
+---
+
+## Integração com CI/CD (recomendado)
+
+* **feature/**: build + testes (nenhum deploy).
+* **develop**: integração contínua do próximo release (ambiente de **homologação**/staging).
+* **release/**: testes de regressão, scan de segurança, geração de artefatos candidatos.
+* **main**: pipeline de **produção** (deploy, tag, geração de release notes).
+* **hotfix/**: caminho rápido para produção, com gates mínimos necessários.
+
+**Proteções**
+
+* Branch protection para `main` e `develop` (reviews obrigatórios, status checks verdes).
+* Regras de quem pode criar/mergear `release/` e `hotfix/`.
+
+---
+
+## Quando Gitflow é uma boa
+
+* Times médios/grandes com **janelas de release** claras.
+* Produtos com **publicações menos frequentes** (ex.: mensal, trimestral).
+* Ambientes regulados/legados, **múltiplas versões em suporte**.
+
+## Quando pode atrapalhar
+
+* Equipes que fazem **deploy contínuo** (muito frequente).
+* Projetos que preferem **trunk-based** ou **GitHub Flow** (apenas `main`, feature branches curtas, deploy direto).
+* Se `develop` vira uma “fila de espera” longa (risco de “merge hell”).
+
+**Alternativas rápidas**
+
+* **GitHub Flow**: `main` + feature branches + PR + deploy contínuo.
+* **GitLab Flow**: aproxima branches de ambientes (ex.: `production`, `preprod`) — útil com múltiplos ambientes.
+
+---
+
+## Anti-padrões comuns (e como evitar)
+
+* **Esquecer o merge de volta do hotfix para `develop`** → divergência de código.
+  *Checklist de release/hotfix* obrigatório.
+* **Release branch recebendo novas features** → quebre o freeze; crie outra `release/` quando pronto.
+* **Features muito longas** → mantenha pequenas e integre cedo (feature toggles ajudam).
+* **CI fraco** → sem testes, Gitflow vira burocracia; invista nos pipelines.
+
+---
+
+## Cheatsheet rápido
+
+```bash
+# criar develop (uma vez)
+git checkout -b develop && git push -u origin develop
+
+# feature
+git checkout develop
+git checkout -b feature/<nome>
+# ... commits ...
+git push -u origin feature/<nome>
+# PR -> develop
+
+# release
+git checkout develop
+git checkout -b release/<x.y.z>
+# bump versão, fix, teste
+# PR -> main
+git tag -a v<x.y.z> -m "Release <x.y.z>"
+# merge back -> develop
+
+# hotfix
+git checkout main
+git checkout -b hotfix/<x.y.z>
+# fix crítico
+# PR -> main
+git tag -a v<x.y.z> -m "Hotfix <x.y.z>"
+# merge back -> develop
+```
+
+---
+
+## Dicas para adoção suave
+
+* Escreva um **README de fluxo** no repositório (com exemplos de branch names, política de merge e de tags).
+* Crie **templates de PR** e **checklists de release/hotfix**.
+* Configure **proteções de branch** e **ambientes de deploy** (staging/production).
+* Faça um **workshop curto** com o time e simule: 1 feature, 1 release, 1 hotfix.
 
 ## Conclusão
 
