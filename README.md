@@ -639,8 +639,10 @@ git tag -a v<x.y.z> -m "Hotfix <x.y.z>"
 
 Voltando  e deletando mudanças
 
+```bash
 git reset --hard <HASH_DO_COMMIT>
 git push --force
+```
 
 ## Conclusão
 
