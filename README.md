@@ -635,6 +635,13 @@ git tag -a v<x.y.z> -m "Hotfix <x.y.z>"
 * Configure **proteções de branch** e **ambientes de deploy** (staging/production).
 * Faça um **workshop curto** com o time e simule: 1 feature, 1 release, 1 hotfix.
 
+## Salva  Vidas
+
+Voltando  e deletando mudanças
+
+git reset --hard <HASH_DO_COMMIT>
+git push --force
+
 ## Conclusão
 
 Este tutorial cobriu os principais conceitos e comandos do Git, fornecendo uma base sólida para gerenciar seus projetos de desenvolvimento de software. Explore a documentação oficial do Git e outros recursos online para aprofundar seus conhecimentos e dominar o poder do controle de versão.
